@@ -1,0 +1,15 @@
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\bin\Release\ColorBasics-WPF.exe
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\bin\Release\ColorBasics-WPF.pdb
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\bin\Release\Microsoft.Kinect.dll
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\bin\Release\Microsoft.Kinect.xml
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\MainWindow.baml
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\MainWindow.g.cs
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\App.g.cs
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\ColorBasics-WPF_MarkupCompile.cache
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\ColorBasics-WPF.g.resources
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\Microsoft.Samples.Kinect.ColorBasics.Properties.Resources.resources
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\ColorBasics-WPF.csproj.GenerateResource.Cache
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\ColorBasics-WPF.csproj.CoreCompileInputs.cache
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\ColorBasics-WPF.exe
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\ColorBasics-WPF.pdb
+C:\Users\Michael\Documents\Uni\MEng\Kinect\ColorBasics-WPF\obj\Release\ColorBasics-WPF.csprojResolveAssemblyReference.cache
