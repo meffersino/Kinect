@@ -10,6 +10,7 @@ namespace Microsoft.Samples.Kinect.ColorBasics
     using System.Globalization;
     using System.IO;
     using System.Windows;
+    using System.Windows.Controls;
     using System.Windows.Media;
     using System.Windows.Media.Imaging;
     using Microsoft.Kinect;
@@ -78,6 +79,7 @@ namespace Microsoft.Samples.Kinect.ColorBasics
         /// Bitmap that will hold color information
         /// </summary>
         private WriteableBitmap colorBitmap;
+        private BitmapSource skeletonBmp;
 
         /// <summary>
         /// Intermediate storage for the color data received from the camera
@@ -101,6 +103,8 @@ namespace Microsoft.Samples.Kinect.ColorBasics
 
         private int skelDrawn = 0;
         private int saveSkeleton = 0;
+
+        private Image myImage;
 
         /// <summary>
         /// Initializes a new instance of the MainWindow class.
@@ -159,6 +163,7 @@ namespace Microsoft.Samples.Kinect.ColorBasics
         /// <param name="e">event arguments</param>
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
+            myImage = new Image();
             // Look through all sensors and start the first connected one.
             // This requires that a Kinect is connected at the time of app startup.
             // To make your app robust against plug/unplug, 
@@ -182,7 +187,7 @@ namespace Microsoft.Samples.Kinect.ColorBasics
                 //this.colorPixels = new byte[this.sensor.ColorStream.FramePixelDataLength];
 
                 // This is the bitmap we'll display on-screen
-                this.colorBitmap = new WriteableBitmap(this.sensor.ColorStream.FrameWidth, this.sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Rgb24, null);
+                this.colorBitmap = new WriteableBitmap(this.sensor.ColorStream.FrameWidth, this.sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
 
                 // Create the drawing group we'll use for drawing
                 this.drawingGroup = new DrawingGroup();
@@ -248,19 +253,19 @@ namespace Microsoft.Samples.Kinect.ColorBasics
                     // Copy the pixel data from the image to a temporary array
                     colorFrame.CopyPixelDataTo(this.colorPixels);
                     // Write the pixel data into our bitmap
-                    this.colorBitmap.WritePixels(
+                    /*this.colorBitmap.WritePixels(
                         new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight),
                         this.colorPixels,
                         this.colorBitmap.PixelWidth * sizeof(int),
-                        0);
-                    if (colorImagePointArray != null && saveSkeleton != 0)
+                        0);*/
+                    if (colorImagePointArray != null )
                     {
                         this.colorBitmap.WritePixels(
                             new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight),
                             this.colorImagePointArray,
                             this.colorBitmap.PixelWidth * sizeof(int),
                             0);
-                        Console.WriteLine("Colour Image Point Array not null");
+                        //Console.WriteLine("Colour Image Point Array not null");
                         saveSkeleton = 0;
                     }
                     skelDrawn = 0;
@@ -283,16 +288,17 @@ namespace Microsoft.Samples.Kinect.ColorBasics
             saveSkeleton = 1;
             // create a png bitmap encoder which knows how to save a .png file
             BitmapEncoder encoder = new PngBitmapEncoder();
-
+            BitmapEncoder skelEncoder = new PngBitmapEncoder();
             // create frame from the writable bitmap and add to encoder
             encoder.Frames.Add(BitmapFrame.Create(this.colorBitmap));
-
+            skelEncoder.Frames.Add(BitmapFrame.Create(this.skeletonBmp));
             string time = System.DateTime.Now.ToString("hh'-'mm'-'ss", CultureInfo.CurrentUICulture.DateTimeFormat);
 
             //string myPhotos = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
             string myPhotos = "C:\\Users\\Michael\\Documents\\Uni\\MEng\\Kinect\\ColorBasics-WPF\\GeneratedImages";
 
             string path = Path.Combine(myPhotos, "KinectSnapshot-" + time + ".png");
+            string pathSkel = Path.Combine(myPhotos, "Skeleton-" + time + ".png"); 
 
             // write the new file to disk
             try
@@ -301,12 +307,18 @@ namespace Microsoft.Samples.Kinect.ColorBasics
                 {
                     encoder.Save(fs);
                 }
+                using (FileStream fs = new FileStream(pathSkel, FileMode.Create))
+                {
+                    skelEncoder.Save(fs);
+                }
 
                 this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteSuccess, path);
+                this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteSuccess, pathSkel);
             }
             catch (IOException)
             {
                 this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteFailed, path);
+                this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteFailed, pathSkel);
             }
         }
 
@@ -333,7 +345,8 @@ namespace Microsoft.Samples.Kinect.ColorBasics
             {
                 // Draw a transparent background to set the render size
                 dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-
+                DrawingVisual drawingVis = new DrawingVisual();
+                DrawingContext drawingCon = drawingVis.RenderOpen();
                 if (skeletons.Length != 0)
                 {
                     int counter = 0;
@@ -354,11 +367,18 @@ namespace Microsoft.Samples.Kinect.ColorBasics
                             BodyCenterThickness,
                             BodyCenterThickness);
                             CoordinateMapper mapper = new CoordinateMapper(this.sensor);
+
                             colorImagePointArray[(int)skel.Position.X*(int)skel.Position.Y] = mapper.MapSkeletonPointToColorPoint(skel.Position, ColorImageFormat.RgbResolution640x480Fps30);
                             counter++;
                         }
                     }
                     skelDrawn = 1;
+                    drawingCon.DrawDrawing(this.drawingGroup);
+                    drawingCon.Close();
+                    RenderTargetBitmap bmp = new RenderTargetBitmap(this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight, 100, 100, PixelFormats.Pbgra32);
+                    bmp.Render(drawingVis);
+                    
+                    skeletonBmp = bmp;
                 }
 
                 // prevent drawing outside of our render area
@@ -485,10 +505,12 @@ namespace Microsoft.Samples.Kinect.ColorBasics
                 if (this.checkBoxSeatedMode.IsChecked.GetValueOrDefault())
                 {
                     this.sensor.SkeletonStream.TrackingMode = SkeletonTrackingMode.Seated;
+                    Console.WriteLine("Seated");
                 }
                 else
                 {
                     this.sensor.SkeletonStream.TrackingMode = SkeletonTrackingMode.Default;
+                    Console.WriteLine("Not Seated");
                 }
             }
         }
