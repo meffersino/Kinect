@@ -7,8 +7,10 @@
 namespace Microsoft.Samples.Kinect.ColorBasics
 {
     using System;
+    using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
+    using System.Threading;
     using System.Windows;
     using System.Windows.Controls;
     using System.Windows.Media;
@@ -102,9 +104,15 @@ namespace Microsoft.Samples.Kinect.ColorBasics
         private System.Windows.Controls.Image skelImage;
 
         private int skelDrawn = 0;
-        private int saveSkeleton = 0;
 
         private Image myImage;
+
+        private DateTime startTime;
+        private int delay = 5;
+
+        private readonly object _lock = new object();
+        private readonly Queue<BitmapSource> _queue = new Queue<BitmapSource>();
+        private readonly AutoResetEvent _signal = new AutoResetEvent(false);
 
         /// <summary>
         /// Initializes a new instance of the MainWindow class.
@@ -125,7 +133,7 @@ namespace Microsoft.Samples.Kinect.ColorBasics
             if (skeleton.ClippedEdges.HasFlag(FrameEdges.Bottom))
             {
                 drawingContext.DrawRectangle(
-                    Brushes.Red,
+                    Brushes.Black,
                     null,
                     new Rect(0, RenderHeight - ClipBoundsThickness, RenderWidth, ClipBoundsThickness));
             }
@@ -133,7 +141,7 @@ namespace Microsoft.Samples.Kinect.ColorBasics
             if (skeleton.ClippedEdges.HasFlag(FrameEdges.Top))
             {
                 drawingContext.DrawRectangle(
-                    Brushes.Red,
+                    Brushes.Black,
                     null,
                     new Rect(0, 0, RenderWidth, ClipBoundsThickness));
             }
@@ -141,7 +149,7 @@ namespace Microsoft.Samples.Kinect.ColorBasics
             if (skeleton.ClippedEdges.HasFlag(FrameEdges.Left))
             {
                 drawingContext.DrawRectangle(
-                    Brushes.Red,
+                    Brushes.Black,
                     null,
                     new Rect(0, 0, ClipBoundsThickness, RenderHeight));
             }
@@ -149,13 +157,75 @@ namespace Microsoft.Samples.Kinect.ColorBasics
             if (skeleton.ClippedEdges.HasFlag(FrameEdges.Right))
             {
                 drawingContext.DrawRectangle(
-                    Brushes.Red,
+                    Brushes.Black,
                     null,
                     new Rect(RenderWidth - ClipBoundsThickness, 0, ClipBoundsThickness, RenderHeight));
             }
         }
 
+        private void TimerMethod()
+        {
+            while(true)
+            {
+                Console.WriteLine("Sleeping");
+                int sleepTime = 5000;
+                Thread.Sleep(sleepTime);
+                Console.WriteLine("Awake");
+                TimerSave();
+            }
+        }
 
+        private void TimerSave()
+        {
+            if (null == this.sensor)
+            {
+                this.statusBarText.Text = Properties.Resources.ConnectDeviceFirst;
+                return;
+            }
+            // create a png bitmap encoder which knows how to save a .png file
+            BitmapEncoder skelEncoder = new PngBitmapEncoder();
+            // create frame from the writable bitmap and add to encoder
+            /*_signal.WaitOne();
+
+            BitmapSource timerBmp = null;
+            lock (_lock)
+            {
+                if (_queue.Count > 0)
+                {
+                    timerBmp = _queue.Peek();
+                    _queue.Clear();
+                }
+            }
+            if(timerBmp!=null)
+            {*/
+
+                skelEncoder.Frames.Add(BitmapFrame.Create(skeletonBmp));
+                string time = System.DateTime.Now.ToString("hh'-'mm'-'ss", CultureInfo.CurrentUICulture.DateTimeFormat);
+
+                //string myPhotos = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+                string myPhotos = "C:\\Users\\Michael\\Documents\\Uni\\MEng\\Kinect\\ColorBasics-WPF\\GeneratedImages\\TimerImages";
+
+                string pathSkel = Path.Combine(myPhotos, "Timer-Skeleton-" + time + ".png");
+
+                // write the new file to disk
+                try
+                {
+                    using (FileStream fs = new FileStream(pathSkel, FileMode.Create))
+                    {
+                        skelEncoder.Save(fs);
+                    }
+
+                    this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteSuccess, pathSkel);
+                }
+                catch (IOException)
+                {
+                    this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteFailed, pathSkel);
+                }
+            
+            
+        }
+            
+    
         /// <summary>
         /// Execute startup tasks
         /// </summary>
@@ -163,6 +233,11 @@ namespace Microsoft.Samples.Kinect.ColorBasics
         /// <param name="e">event arguments</param>
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
+            /*ThreadStart timerThreadStart = new ThreadStart(TimerMethod);
+            Thread timerThread = new Thread(timerThreadStart);
+            timerThread.Start();
+            */
+            startTime = DateTime.Now;
             myImage = new Image();
             // Look through all sensors and start the first connected one.
             // This requires that a Kinect is connected at the time of app startup.
@@ -266,7 +341,6 @@ namespace Microsoft.Samples.Kinect.ColorBasics
                             this.colorBitmap.PixelWidth * sizeof(int),
                             0);
                         //Console.WriteLine("Colour Image Point Array not null");
-                        saveSkeleton = 0;
                     }
                     skelDrawn = 0;
                 }
@@ -280,45 +354,46 @@ namespace Microsoft.Samples.Kinect.ColorBasics
         /// <param name="e">event arguments</param>
         private void ButtonScreenshotClick(object sender, RoutedEventArgs e)
         {
-            if (null == this.sensor)
-            {
-                this.statusBarText.Text = Properties.Resources.ConnectDeviceFirst;
-                return;
-            }
-            saveSkeleton = 1;
-            // create a png bitmap encoder which knows how to save a .png file
-            BitmapEncoder encoder = new PngBitmapEncoder();
-            BitmapEncoder skelEncoder = new PngBitmapEncoder();
-            // create frame from the writable bitmap and add to encoder
-            encoder.Frames.Add(BitmapFrame.Create(this.colorBitmap));
-            skelEncoder.Frames.Add(BitmapFrame.Create(this.skeletonBmp));
-            string time = System.DateTime.Now.ToString("hh'-'mm'-'ss", CultureInfo.CurrentUICulture.DateTimeFormat);
-
-            //string myPhotos = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-            string myPhotos = "C:\\Users\\Michael\\Documents\\Uni\\MEng\\Kinect\\ColorBasics-WPF\\GeneratedImages";
-
-            string path = Path.Combine(myPhotos, "KinectSnapshot-" + time + ".png");
-            string pathSkel = Path.Combine(myPhotos, "Skeleton-" + time + ".png"); 
-
-            // write the new file to disk
-            try
-            {
-                using (FileStream fs = new FileStream(path, FileMode.Create))
+            while (true) {
+                if (null == this.sensor)
                 {
-                    encoder.Save(fs);
+                    this.statusBarText.Text = Properties.Resources.ConnectDeviceFirst;
+                    return;
                 }
-                using (FileStream fs = new FileStream(pathSkel, FileMode.Create))
-                {
-                    skelEncoder.Save(fs);
-                }
+                // create a png bitmap encoder which knows how to save a .png file
+                BitmapEncoder encoder = new PngBitmapEncoder();
+                BitmapEncoder skelEncoder = new PngBitmapEncoder();
+                // create frame from the writable bitmap and add to encoder
+                encoder.Frames.Add(BitmapFrame.Create(this.colorBitmap));
+                skelEncoder.Frames.Add(BitmapFrame.Create(this.skeletonBmp));
+                string time = System.DateTime.Now.ToString("hh'-'mm'-'ss", CultureInfo.CurrentUICulture.DateTimeFormat);
 
-                this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteSuccess, path);
-                this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteSuccess, pathSkel);
-            }
-            catch (IOException)
-            {
-                this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteFailed, path);
-                this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteFailed, pathSkel);
+                //string myPhotos = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+                string myPhotos = "C:\\Users\\Michael\\Documents\\Uni\\MEng\\Kinect\\ColorBasics-WPF\\GeneratedImages\\ScreenshotImages";
+
+                string path = Path.Combine(myPhotos, "KinectSnapshot-" + time + ".png");
+                string pathSkel = Path.Combine(myPhotos, "Skeleton-" + time + ".png");
+
+                // write the new file to disk
+                try
+                {
+                    using (FileStream fs = new FileStream(path, FileMode.Create))
+                    {
+                        encoder.Save(fs);
+                    }
+                    using (FileStream fs = new FileStream(pathSkel, FileMode.Create))
+                    {
+                        skelEncoder.Save(fs);
+                    }
+
+                    this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteSuccess, path);
+                    this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteSuccess, pathSkel);
+                }
+                catch (IOException)
+                {
+                    this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteFailed, path);
+                    this.statusBarText.Text = string.Format("{0} {1}", Properties.Resources.ScreenshotWriteFailed, pathSkel);
+                }
             }
         }
 
@@ -379,6 +454,24 @@ namespace Microsoft.Samples.Kinect.ColorBasics
                     bmp.Render(drawingVis);
                     
                     skeletonBmp = bmp;
+
+                    DateTime currentTime = DateTime.Now;
+                    if (currentTime.Subtract(new TimeSpan(0, 0, delay)) >= startTime)
+                    {
+                        TimerSave();
+                        startTime = currentTime;
+                    }
+
+
+
+                    /*
+                    lock (_lock)
+                    {
+                        _queue.Enqueue(skeletonBmp.CloneCurrentValue());
+                    }
+
+                    // notify the waiting thread
+                    _signal.Set();*/
                 }
 
                 // prevent drawing outside of our render area
